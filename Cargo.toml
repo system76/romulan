@@ -1,0 +1,13 @@
+[package]
+name = "romulan"
+version = "0.1.0"
+edition = "2018"
+description = "Rust library for parsing a number of firmware images"
+license = "MIT"
+authors = ["Jeremy Soller <jackpot51@gmail.com>"]
+repository = "https://github.com/system76/romulan"
+
+[dependencies]
+bitflags = "1.3.2"
+plain = "0.2.3"
+redox_uefi = "0.1.0"
