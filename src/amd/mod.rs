@@ -3,7 +3,8 @@
 use alloc::string::String;
 use core::mem;
 
-mod flash;
+pub mod flash;
+pub mod directory;
 
 pub struct Rom<'a> {
     data: &'a [u8],
@@ -12,14 +13,14 @@ pub struct Rom<'a> {
 
 impl<'a> Rom<'a> {
     pub fn new(data: &'a [u8]) -> Result<Rom, String> {
-        let mut i = 16;
+        let mut i = 0;
 
         while i + mem::size_of::<flash::Signature>() <= data.len() {
             if data[i..i + 4] == [0xaa, 0x55, 0xaa, 0x55] {
                 return Ok(Rom {
-                    data: &data[i - 16..],
+                    data: &data[i..],
                     signature: plain::from_bytes(&data[i..]).map_err(|err| {
-                        format!("Flash descriptor invalid: {:?}", err)
+                        format!("Flash signature invalid: {:?}", err)
                     })?
                 });
             }
@@ -27,7 +28,7 @@ impl<'a> Rom<'a> {
             i += 4;
         }
 
-        Err(format!("Flash descriptor not found"))
+        Err(format!("Flash signature not found"))
     }
 
     pub fn data(&self) -> &'a [u8] {
