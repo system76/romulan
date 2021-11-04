@@ -7,37 +7,60 @@ use romulan::amd::{
     directory::Directory,
 };
 
-fn directory(data: &[u8], address: u32) {
+fn print_directory(data: &[u8], address: u64, indent: usize) {
+    //TODO: optimize
+    let mut padding = String::with_capacity(indent);
+    for i in 0..indent {
+        padding.push(' ');
+    }
     let offset = (address & 0xFFFFFF) as usize;
     match Directory::new(&data[offset..]) {
         Ok(Directory::Bios(directory)) => {
-            println!("{:X?}", directory.header());
+            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
             for entry in directory.entries() {
-                println!("{:X?}", entry);
+                println!("{}  * {:X?}", padding, entry);
+                if entry.kind == 0x70 {
+                    print_directory(data, entry.source, indent + 4);
+                }
             }
         },
         Ok(Directory::BiosCombo(combo)) => {
-            println!("{:X?}", combo.header());
+            println!("{}* {:#X}: {:X?}", padding, address, combo.header());
             for entry in combo.entries() {
-                println!("{:X?}", entry);
-                directory(data, entry.directory as u32);
+                println!("{}  * {:X?}", padding, entry);
+                print_directory(data, entry.directory, indent + 4);
+            }
+        },
+        Ok(Directory::BiosLevel2(directory)) => {
+            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
+            for entry in directory.entries() {
+                println!("{}  * {:X?}", padding, entry);
             }
         },
         Ok(Directory::Psp(directory)) => {
-            println!("{:X?}", directory.header());
+            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
             for entry in directory.entries() {
-                println!("{:X?}", entry);
+                println!("{}  * {:X?}", padding, entry);
+                if entry.kind == 0x40 {
+                    print_directory(data, entry.value, indent + 4);
+                }
             }
         },
         Ok(Directory::PspCombo(combo)) => {
-            println!("{:X?}", combo.header());
+            println!("{}* {:#X}: {:X?}", padding, address, combo.header());
             for entry in combo.entries() {
-                println!("{:X?}", entry);
-                directory(data, entry.directory as u32);
+                println!("{}  * {:X?}", padding, entry);
+                print_directory(data, entry.directory, indent + 4);
+            }
+        },
+        Ok(Directory::PspLevel2(directory)) => {
+            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
+            for entry in directory.entries() {
+                println!("{}  * {:X?}", padding, entry);
             }
         },
         Err(err) => {
-            println!("Failed to load directory: {}", err);
+            println!("{}* {:#X}: failed to load directory: {}", padding, address, err);
         }
     }
 }
@@ -57,6 +80,6 @@ fn main() {
     let signature = rom.signature();
     println!("{:#X?}", signature);
 
-    directory(&data, signature.psp);
-    directory(&data, signature.bios);
+    print_directory(&data, signature.psp as u64, 0);
+    print_directory(&data, signature.bios as u64, 0);
 }

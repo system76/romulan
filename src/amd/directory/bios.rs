@@ -36,7 +36,7 @@ pub struct BiosDirectory<'a> {
 
 impl<'a> BiosDirectory<'a> {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
-        if &data[..4] == b"$BHD" {
+        if &data[..4] == b"$BHD" || &data[..4] == b"$BL2" {
             let header: &DirectoryHeader = plain::from_bytes(&data).map_err(|err| {
                 format!("BIOS directory header invalid: {:?}", err)
             })?;

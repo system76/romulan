@@ -33,7 +33,7 @@ pub struct PspDirectory<'a> {
 
 impl<'a> PspDirectory<'a> {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
-        if &data[..4] == b"$PSP" {
+        if &data[..4] == b"$PSP" || &data[..4] == b"$PL2" {
             let header: &DirectoryHeader = plain::from_bytes(&data).map_err(|err| {
                 format!("PSP directory header invalid: {:?}", err)
             })?;
