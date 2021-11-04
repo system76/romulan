@@ -15,7 +15,7 @@ pub struct BiosDirectoryEntry {
     pub kind: u8,
     /// 0x01: memory region security attributes
     pub region_kind: u8,
-    /// 0x02: flags (specific to type of directory)
+    /// 0x02: flags (specific to type of entry)
     pub flags: u8,
     /// 0x03: used to filter entries by model
     pub sub_program: u8,
@@ -25,6 +25,45 @@ pub struct BiosDirectoryEntry {
     pub source: u64,
     /// 0x10: destination address
     pub destination: u64,
+}
+
+impl BiosDirectoryEntry {
+    pub fn instance(&self) -> u8 {
+        (self.flags >> 4) & 0xF
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self.kind {
+            0x05 => "BIOS Signing Key",
+            0x07 => "BIOS Signature",
+            0x60 => "AGESA PSP Customization Block",
+            0x61 => "AGESA PSP Output Block",
+            0x62 => "BIOS Binary",
+            0x63 => "AGESA PSP Output Block NVRAM",
+            0x64 => match self.instance() {
+                0x01 => "PMU Firmware Code (DDR4 UDIMM 1D)",
+                0x02 => "PMU Firmware Code (DDR4 RDIMM 1D)",
+                0x03 => "PMU Firmware Code (DDR4 LRDIMM 1D)",
+                0x04 => "PMU Firmware Code (DDR4 2D)",
+                0x05 => "PMU Firmware Code (DDR4 2D Diagnostic)",
+                _ => "PMU Firmware Code (Unknown)",
+            },
+            0x65 => match self.instance() {
+                0x01 => "PMU Firmware Data (DDR4 UDIMM 1D)",
+                0x02 => "PMU Firmware Data (DDR4 RDIMM 1D)",
+                0x03 => "PMU Firmware Data (DDR4 LRDIMM 1D)",
+                0x04 => "PMU Firmware Data (DDR4 2D)",
+                0x05 => "PMU Firmware Data (DDR4 2D Diagnostic)",
+                _ => "PMU Firmware Data (Unknown)",
+            },
+            0x66 => "Microcode",
+            0x67 => "Machine Check Exception Data",
+            0x68 => "AGESA PSP Customization Block Backup",
+            0x6A => "MP2 Firmware",
+            0x70 => "BIOS Level 2 Directory",
+            _ => "Unknown",
+        }
+    }
 }
 
 unsafe impl Plain for BiosDirectoryEntry {}

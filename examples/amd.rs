@@ -16,47 +16,47 @@ fn print_directory(data: &[u8], address: u64, indent: usize) {
     let offset = (address & 0xFFFFFF) as usize;
     match Directory::new(&data[offset..]) {
         Ok(Directory::Bios(directory)) => {
-            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
+            println!("{}* {:#X}: BIOS Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * {:X?}", padding, entry);
+                println!("{}  * Type {:02X} Region {:02X} Flags {:02X} SubProg {:02X} Size {:08X} Source {:08X} Dest {:016X}: {}", padding, entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.size, entry.source, entry.destination, entry.description());
                 if entry.kind == 0x70 {
                     print_directory(data, entry.source, indent + 4);
                 }
             }
         },
         Ok(Directory::BiosCombo(combo)) => {
-            println!("{}* {:#X}: {:X?}", padding, address, combo.header());
+            println!("{}* {:#X}: BIOS Combo Directory", padding, address);
             for entry in combo.entries() {
                 println!("{}  * {:X?}", padding, entry);
                 print_directory(data, entry.directory, indent + 4);
             }
         },
         Ok(Directory::BiosLevel2(directory)) => {
-            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
+            println!("{}* {:#X}: BIOS Level 2 Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * {:X?}", padding, entry);
+                println!("{}  * Type {:02X} Region {:02X} Flags {:02X} SubProg {:02X} Size {:08X} Source {:08X} Dest {:016X}: {}", padding, entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.size, entry.source, entry.destination, entry.description());
             }
         },
         Ok(Directory::Psp(directory)) => {
-            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
+            println!("{}* {:#X}: PSP Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * {:X?}", padding, entry);
+                println!("{}  * Type {:02X} SubProg {:02X} Size {:08X} Value {:08X}: {}", padding, entry.kind, entry.sub_program, entry.size, entry.value, entry.description());
                 if entry.kind == 0x40 {
                     print_directory(data, entry.value, indent + 4);
                 }
             }
         },
         Ok(Directory::PspCombo(combo)) => {
-            println!("{}* {:#X}: {:X?}", padding, address, combo.header());
+            println!("{}* {:#X}: PSP Combo Directory", padding, address);
             for entry in combo.entries() {
                 println!("{}  * {:X?}", padding, entry);
                 print_directory(data, entry.directory, indent + 4);
             }
         },
         Ok(Directory::PspLevel2(directory)) => {
-            println!("{}* {:#X}: {:X?}", padding, address, directory.header());
+            println!("{}* {:#X}: PSP Level 2 Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * {:X?}", padding, entry);
+                println!("{}  * Type {:02X} SubProg {:02X} Size {:08X} Value {:08X}: {}", padding, entry.kind, entry.sub_program, entry.size, entry.value, entry.description());
             }
         },
         Err(err) => {
