@@ -34,14 +34,28 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
             for entry in directory.entries() {
                 println!("{}  * Type {:02X} Region {:02X} Flags {:02X} SubProg {:02X} Size {:08X} Source {:016X} Dest {:016X}: {}", padding, entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.size, entry.source, entry.destination, entry.description());
                 if let Some(export) = export_opt {
-                    let dir = export.join("bios/l1");
-                    fs::create_dir_all(&dir).expect("failed to create bios/l1 export directory");
-                    let file = dir.join(format!("Type_{:02X}_Region_{:02X}_Flags_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")));
-                    let info = match entry.data(data) {
-                        Ok(ok) => hexdump(&ok),
-                        Err(err) => err,
+                    let name = format!(
+                        "BIOS/Level1/Type{:02X}_Region{:02X}_Flags{:02X}_SubProg{:02X}_{}",
+                        entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")
+                    );
+                    let dir = export.join(&name);
+                    if dir.exists() {
+                        panic!("directory already exists '{}'", name);
+                    }
+                    fs::create_dir_all(&dir)
+                        .expect(&format!("failed to create directory '{}'", name));
+                    match entry.data(data) {
+                        Ok(ok) => {
+                            fs::write(dir.join("raw"), &ok)
+                                .expect(&format!("failed to write '{}/raw'", name));
+                            fs::write(dir.join("hex"), hexdump(&ok))
+                                .expect(&format!("failed to write '{}/hex'", name));
+                        },
+                        Err(err) => {
+                            fs::write(dir.join("error"), err)
+                                .expect(&format!("failed to write '{}/error'", name));
+                        }
                     };
-                    fs::write(&file, &info).expect("failed to write bios/l1 export file");
                 }
                 if entry.kind == 0x70 {
                     print_directory(data, entry.source, indent + 4, export_opt);
@@ -60,30 +74,58 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
             for entry in directory.entries() {
                 println!("{}  * Type {:02X} Region {:02X} Flags {:02X} SubProg {:02X} Size {:08X} Source {:016X} Dest {:016X}: {}", padding, entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.size, entry.source, entry.destination, entry.description());
                 if let Some(export) = export_opt {
-                    let dir = export.join("bios/l2");
-                    fs::create_dir_all(&dir).expect("failed to create bios/l2 export directory");
-                    let file = dir.join(format!("Type_{:02X}_Region_{:02X}_Flags_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")));
-                    let info = match entry.data(data) {
-                        Ok(ok) => hexdump(&ok),
-                        Err(err) => err,
+                    let name = format!(
+                        "BIOS/Level2/Type{:02X}_Region{:02X}_Flags{:02X}_SubProg{:02X}_{}",
+                        entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")
+                    );
+                    let dir = export.join(&name);
+                    if dir.exists() {
+                        panic!("directory already exists '{}'", name);
+                    }
+                    fs::create_dir_all(&dir)
+                        .expect(&format!("failed to create directory '{}'", name));
+                    match entry.data(data) {
+                        Ok(ok) => {
+                            fs::write(dir.join("raw"), &ok)
+                                .expect(&format!("failed to write '{}/raw'", name));
+                            fs::write(dir.join("hex"), hexdump(&ok))
+                                .expect(&format!("failed to write '{}/hex'", name));
+                        },
+                        Err(err) => {
+                            fs::write(dir.join("error"), err)
+                                .expect(&format!("failed to write '{}/error'", name));
+                        }
                     };
-                    fs::write(&file, &info).expect("failed to write bios/l2 export file");
                 }
             }
         },
         Ok(Directory::Psp(directory)) => {
             println!("{}* {:#X}: PSP Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * Type {:02X} SubProg {:02X} Size {:08X} Value {:016X}: {}", padding, entry.kind, entry.sub_program, entry.size, entry.value, entry.description());
+                println!("{}  * Type {:02X} SubProg {:02X} Rom {:02X} Size {:08X} Value {:016X}: {}", padding, entry.kind, entry.sub_program, entry.rom_id, entry.size, entry.value, entry.description());
                 if let Some(export) = export_opt {
-                    let dir = export.join("psp/l1");
-                    fs::create_dir_all(&dir).expect("failed to create psp/l1 export directory");
-                    let file = dir.join(format!("Type_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.sub_program, entry.description().replace(" ", "_")));
-                    let info = match entry.data(data) {
-                        Ok(ok) => hexdump(&ok),
-                        Err(err) => err,
+                    let name = format!(
+                        "PSP/Level1/Type{:02X}_SubProg{:02X}_Rom{:02X}_{}",
+                        entry.kind, entry.sub_program, entry.rom_id, entry.description().replace(" ", "_")
+                    );
+                    let dir = export.join(&name);
+                    if dir.exists() {
+                        panic!("directory already exists '{}'", name);
+                    }
+                    fs::create_dir_all(&dir)
+                        .expect(&format!("failed to create directory '{}'", name));
+                    match entry.data(data) {
+                        Ok(ok) => {
+                            fs::write(dir.join("raw"), &ok)
+                                .expect(&format!("failed to write '{}/raw'", name));
+                            fs::write(dir.join("hex"), hexdump(&ok))
+                                .expect(&format!("failed to write '{}/hex'", name));
+                        },
+                        Err(err) => {
+                            fs::write(dir.join("error"), err)
+                                .expect(&format!("failed to write '{}/error'", name));
+                        }
                     };
-                    fs::write(&file, &info).expect("failed to write psp/l1 export file");
                 }
                 if entry.kind == 0x40 {
                     print_directory(data, entry.value, indent + 4, export_opt);
@@ -102,14 +144,28 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
             for entry in directory.entries() {
                 println!("{}  * Type {:02X} SubProg {:02X} Size {:08X} Value {:016X}: {}", padding, entry.kind, entry.sub_program, entry.size, entry.value, entry.description());
                 if let Some(export) = export_opt {
-                    let dir = export.join("psp/l2");
-                    fs::create_dir_all(&dir).expect("failed to create psp/l2 export directory");
-                    let file = dir.join(format!("Type_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.sub_program, entry.description().replace(" ", "_")));
-                    let info = match entry.data(data) {
-                        Ok(ok) => hexdump(&ok),
-                        Err(err) => err,
+                    let name = format!(
+                        "PSP/Level2/Type{:02X}_SubProg{:02X}_Rom{:02X}_{}",
+                        entry.kind, entry.sub_program, entry.rom_id, entry.description().replace(" ", "_")
+                    );
+                    let dir = export.join(&name);
+                    if dir.exists() {
+                        panic!("directory already exists '{}'", name);
+                    }
+                    fs::create_dir_all(&dir)
+                        .expect(&format!("failed to create directory '{}'", name));
+                    match entry.data(data) {
+                        Ok(ok) => {
+                            fs::write(dir.join("raw"), &ok)
+                                .expect(&format!("failed to write '{}/raw'", name));
+                            fs::write(dir.join("hex"), hexdump(&ok))
+                                .expect(&format!("failed to write '{}/hex'", name));
+                        },
+                        Err(err) => {
+                            fs::write(dir.join("error"), err)
+                                .expect(&format!("failed to write '{}/error'", name));
+                        }
                     };
-                    fs::write(&file, &info).expect("failed to write psp/l2 export file");
                 }
             }
         },
