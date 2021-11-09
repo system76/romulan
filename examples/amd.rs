@@ -22,7 +22,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                 if let Some(export) = export_opt {
                     let dir = export.join("bios").join("l1");
                     fs::create_dir_all(&dir).expect("failed to create bios/l1 export directory");
-                    let file = dir.join(&format!("Type_{:02X}_Region_{:02X}_Flags_{:02X}_SubProg_{:02X}", entry.kind, entry.region_kind, entry.flags, entry.sub_program));
+                    let file = dir.join(format!("Type_{:02X}_Region_{:02X}_Flags_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")));
                     let data = format!("Size {:08X}", entry.size);
                     fs::write(&file, &data).expect("failed to write bios/l1 export file");
                 }
@@ -45,7 +45,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                 if let Some(export) = export_opt {
                     let dir = export.join("bios").join("l2");
                     fs::create_dir_all(&dir).expect("failed to create bios/l2 export directory");
-                    let file = dir.join(&format!("Type_{:02X}_Region_{:02X}_Flags_{:02X}_SubProg_{:02X}", entry.kind, entry.region_kind, entry.flags, entry.sub_program));
+                    let file = dir.join(format!("Type_{:02X}_Region_{:02X}_Flags_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")));
                     let data = format!("Size {:08X}", entry.size);
                     fs::write(&file, &data).expect("failed to write bios/l2 export file");
                 }
@@ -58,7 +58,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                 if let Some(export) = export_opt {
                     let dir = export.join("psp").join("l1");
                     fs::create_dir_all(&dir).expect("failed to create psp/l1 export directory");
-                    let file = dir.join(format!("Type_{:02X}_SubProg_{:02X}", entry.kind, entry.sub_program));
+                    let file = dir.join(format!("Type_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.sub_program, entry.description().replace(" ", "_")));
                     let data = if entry.size == 0xFFFFFFFF {
                         format!("Value {:016X}", entry.value)
                     } else {
@@ -85,7 +85,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                 if let Some(export) = export_opt {
                     let dir = export.join("psp").join("l2");
                     fs::create_dir_all(&dir).expect("failed to create psp/l2 export directory");
-                    let file = dir.join(&format!("Type_{:02X}_SubProg_{:02X}", entry.kind, entry.sub_program));
+                    let file = dir.join(format!("Type_{:02X}_SubProg_{:02X}_{}", entry.kind, entry.sub_program, entry.description().replace(" ", "_")));
                     let data = if entry.size == 0xFFFFFFFF {
                         format!("Value {:016X}", entry.value)
                     } else {
