@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::string::String;
 use core::mem;
 use plain::Plain;
@@ -25,6 +26,29 @@ pub struct PspDirectoryEntry {
 }
 
 impl PspDirectoryEntry {
+    pub fn data(&self, data: &[u8]) -> Result<Box<[u8]>, String> {
+        if self.size == 0xFFFFFFFF {
+            return Ok(vec![
+                (self.value >> (0 * 8)) as u8,
+                (self.value >> (1 * 8)) as u8,
+                (self.value >> (2 * 8)) as u8,
+                (self.value >> (3 * 8)) as u8,
+                (self.value >> (4 * 8)) as u8,
+                (self.value >> (5 * 8)) as u8,
+                (self.value >> (6 * 8)) as u8,
+                (self.value >> (7 * 8)) as u8,
+            ].into_boxed_slice());
+        }
+
+        let start = (self.value & 0xFFFFFF) as usize;
+        let end = start + self.size as usize;
+        if end <= data.len() {
+            Ok(data[start..end].to_vec().into_boxed_slice())
+        } else {
+            Err(format!("PSP directory entry invalid: {:08X}:{:08X}", start, end))
+        }
+    }
+
     pub fn description(&self) -> &'static str {
         match self.kind {
             0x00 => "AMD Public Key",
