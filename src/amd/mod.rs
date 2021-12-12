@@ -3,8 +3,8 @@
 use alloc::string::String;
 use core::mem;
 
-pub mod flash;
 pub mod directory;
+pub mod flash;
 
 pub struct Rom<'a> {
     data: &'a [u8],
@@ -19,9 +19,8 @@ impl<'a> Rom<'a> {
             if data[i..i + 4] == [0xaa, 0x55, 0xaa, 0x55] {
                 return Ok(Rom {
                     data: &data[i..],
-                    signature: plain::from_bytes(&data[i..]).map_err(|err| {
-                        format!("Flash signature invalid: {:?}", err)
-                    })?
+                    signature: plain::from_bytes(&data[i..])
+                        .map_err(|err| format!("Flash signature invalid: {:?}", err))?,
                 });
             }
 
