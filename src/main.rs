@@ -121,38 +121,50 @@ fn dump_volume(volume: &BiosVolume, padding: &str) {
     }
 }
 
-fn intel_analyze(rom: intel::Rom) -> Result<(), String> {
-    if rom.high_assurance_platform()? {
-        println!("  HAP: set");
-    } else {
-        println!("  HAP: not set");
-    }
+fn intel_analyze(data: &Vec<u8>) -> Result<(), String> {
+    let rom = intel::Rom::new(&data);
+    match rom {
+        Ok(rom) => {
+            if rom.high_assurance_platform()? {
+                println!("  HAP: set");
+            } else {
+                println!("  HAP: not set");
+            }
 
-    if let Some(bios) = rom.bios()? {
-        println!("  BIOS: {} K", bios.data().len() / 1024);
-        for volume in bios.volumes() {
-            dump_volume(&volume, "    ");
-        }
-    } else {
-        println!("  BIOS: None");
-    }
+            if let Some(bios) = rom.bios()? {
+                println!("  BIOS: {} K", bios.data().len() / 1024);
+                for volume in bios.volumes() {
+                    dump_volume(&volume, "    ");
+                }
+            } else {
+                println!("  BIOS: None");
+            }
 
-    if let Some(me) = rom.me()? {
-        println!("  ME: {} K", me.data().len() / 1024);
-        if let Some(version) = me.version() {
-            println!("    Version: {}", version);
-        } else {
-            println!("    Version: Unknown");
+            if let Some(me) = rom.me()? {
+                println!("  ME: {} K", me.data().len() / 1024);
+                if let Some(version) = me.version() {
+                    println!("    Version: {}", version);
+                } else {
+                    println!("    Version: Unknown");
+                }
+            } else {
+                println!("  ME: None");
+            }
+            Ok(())
         }
-    } else {
-        println!("  ME: None");
+        Err(err) => Err(format!("No Intel inside - {}", err)),
     }
-    Ok(())
 }
 
-fn amd_analyze(rom: amd::Rom) -> Result<(), String> {
-    println!("    Signature: {:#?}", rom.signature());
-    Ok(())
+fn amd_analyze(data: &Vec<u8>) -> Result<(), String> {
+    let rom = amd::Rom::new(&data);
+    match rom {
+        Ok(rom) => {
+            println!("    Signature: {:#?}", rom.signature());
+            Ok(())
+        }
+        Err(err) => Err(format!("No AMD inside - {}", err)),
+    }
 }
 
 fn romulan(path: &str) -> Result<(), String> {
@@ -164,23 +176,8 @@ fn romulan(path: &str) -> Result<(), String> {
         .read_to_end(&mut data)
         .map_err(|err| format!("failed to read {}: {}", path, err))?;
 
-    let rom = intel::Rom::new(&data);
-    let rom = match rom {
-        Ok(rom) => intel_analyze(rom),
-        Err(err) => {
-            println!("No Intel inside");
-            let rom = amd::Rom::new(&data);
-            let rom = match rom {
-                Ok(rom) => amd_analyze(rom),
-                Err(err) => {
-                    println!("No AMD inside");
-                    Err(format!("No AMD inside"))
-                }
-            };
-            Ok(())
-        }
-    };
-
+    let _r = intel_analyze(&data);
+    let _r = amd_analyze(&data);
     Ok(())
 }
 
