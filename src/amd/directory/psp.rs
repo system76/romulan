@@ -3,11 +3,7 @@ use alloc::string::String;
 use core::mem;
 use plain::Plain;
 
-use super::{
-    ComboDirectoryEntry,
-    ComboDirectoryHeader,
-    DirectoryHeader
-};
+use super::{ComboDirectoryEntry, ComboDirectoryHeader, DirectoryHeader};
 
 #[derive(Clone, Copy, Debug)]
 #[repr(packed)]
@@ -29,15 +25,16 @@ impl PspDirectoryEntry {
     pub fn data(&self, data: &[u8]) -> Result<Box<[u8]>, String> {
         if self.size == 0xFFFFFFFF {
             return Ok(vec![
-                (self.value >> (0 * 8)) as u8,
-                (self.value >> (1 * 8)) as u8,
+                (self.value) as u8,
+                (self.value >> 8) as u8,
                 (self.value >> (2 * 8)) as u8,
                 (self.value >> (3 * 8)) as u8,
                 (self.value >> (4 * 8)) as u8,
                 (self.value >> (5 * 8)) as u8,
                 (self.value >> (6 * 8)) as u8,
                 (self.value >> (7 * 8)) as u8,
-            ].into_boxed_slice());
+            ]
+            .into_boxed_slice());
         }
 
         let start = (self.value & 0x1FFFFFF) as usize;
@@ -45,7 +42,10 @@ impl PspDirectoryEntry {
         if end <= data.len() {
             Ok(data[start..end].to_vec().into_boxed_slice())
         } else {
-            Err(format!("PSP directory entry invalid: {:08X}:{:08X}", start, end))
+            Err(format!(
+                "PSP directory entry invalid: {:08X}:{:08X}",
+                start, end
+            ))
         }
     }
 
@@ -134,24 +134,22 @@ unsafe impl Plain for PspDirectoryEntry {}
 
 pub struct PspDirectory<'a> {
     header: &'a DirectoryHeader,
-    entries: &'a [PspDirectoryEntry]
+    entries: &'a [PspDirectoryEntry],
 }
 
 impl<'a> PspDirectory<'a> {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         if &data[..4] == b"$PSP" || &data[..4] == b"$PL2" {
-            let header: &DirectoryHeader = plain::from_bytes(&data).map_err(|err| {
-                format!("PSP directory header invalid: {:?}", err)
-            })?;
+            let header: &DirectoryHeader = plain::from_bytes(&data)
+                .map_err(|err| format!("PSP directory header invalid: {:?}", err))?;
 
             return Ok(Self {
                 header: header,
                 entries: plain::slice_from_bytes_len(
                     &data[mem::size_of::<DirectoryHeader>()..],
-                    header.entries as usize
-                ).map_err(|err| {
-                    format!("PSP directory entries invalid: {:?}", err)
-                })?
+                    header.entries as usize,
+                )
+                .map_err(|err| format!("PSP directory entries invalid: {:?}", err))?,
             });
         }
 
@@ -169,24 +167,22 @@ impl<'a> PspDirectory<'a> {
 
 pub struct PspComboDirectory<'a> {
     header: &'a ComboDirectoryHeader,
-    entries: &'a [ComboDirectoryEntry]
+    entries: &'a [ComboDirectoryEntry],
 }
 
 impl<'a> PspComboDirectory<'a> {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         if &data[..4] == b"2PSP" {
-            let header: &ComboDirectoryHeader = plain::from_bytes(&data).map_err(|err| {
-                format!("PSP combo header invalid: {:?}", err)
-            })?;
+            let header: &ComboDirectoryHeader = plain::from_bytes(&data)
+                .map_err(|err| format!("PSP combo header invalid: {:?}", err))?;
 
             return Ok(Self {
                 header: header,
                 entries: plain::slice_from_bytes_len(
                     &data[mem::size_of::<ComboDirectoryHeader>()..],
-                    header.entries as usize
-                ).map_err(|err| {
-                    format!("PSP combo entries invalid: {:?}", err)
-                })?
+                    header.entries as usize,
+                )
+                .map_err(|err| format!("PSP combo entries invalid: {:?}", err))?,
             });
         }
 
