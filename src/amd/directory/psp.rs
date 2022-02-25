@@ -40,7 +40,7 @@ impl PspDirectoryEntry {
             ].into_boxed_slice());
         }
 
-        let start = (self.value & 0xFFFFFF) as usize;
+        let start = (self.value & 0x1FFFFFF) as usize;
         let end = start + self.size as usize;
         if end <= data.len() {
             Ok(data[start..end].to_vec().into_boxed_slice())

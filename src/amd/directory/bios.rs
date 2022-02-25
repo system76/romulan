@@ -30,7 +30,7 @@ pub struct BiosDirectoryEntry {
 
 impl BiosDirectoryEntry {
     pub fn data(&self, data: &[u8]) -> Result<Box<[u8]>, String> {
-        let start = (self.source & 0xFFFFFF) as usize;
+        let start = (self.source & 0x1FFFFFF) as usize;
         let end = start + self.size as usize;
         if end <= data.len() {
             Ok(data[start..end].to_vec().into_boxed_slice())

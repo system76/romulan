@@ -27,7 +27,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
     for i in 0..indent {
         padding.push(' ');
     }
-    let offset = (address & 0xFFFFFF) as usize;
+    let offset = (address & 0x1FFFFFF) as usize;
     match Directory::new(&data[offset..]) {
         Ok(Directory::Bios(directory)) => {
             println!("{}* {:#X}: BIOS Directory", padding, address);
@@ -110,7 +110,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                     );
                     let dir = export.join(&name);
                     if dir.exists() {
-                        panic!("directory already exists '{}'", name);
+                        eprintln!("directory already exists '{}'", name);
                     }
                     fs::create_dir_all(&dir)
                         .expect(&format!("failed to create directory '{}'", name));
