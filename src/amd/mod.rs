@@ -25,7 +25,7 @@ impl<'a> Rom<'a> {
                 });
             }
 
-            i += 4;
+            i += 0x1000;
         }
 
         Err(format!("Flash signature not found"))
