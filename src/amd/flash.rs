@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-
 use plain::Plain;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug)]
-#[repr(packed)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[repr(C)]
 pub struct Signature {
     /// 0x00: Magic of EFS (0x55AA55AA)
     pub magic: u32,

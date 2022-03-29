@@ -160,7 +160,7 @@ fn amd_analyze(data: &Vec<u8>) -> Result<(), String> {
     let rom = amd::Rom::new(&data);
     match rom {
         Ok(rom) => {
-            println!("    Signature: {:#?}", rom.signature());
+            println!("{}", serde_json::to_string(rom.signature()).unwrap());
             Ok(())
         }
         Err(err) => Err(format!("No AMD inside - {}", err)),
@@ -168,7 +168,7 @@ fn amd_analyze(data: &Vec<u8>) -> Result<(), String> {
 }
 
 fn romulan(path: &str) -> Result<(), String> {
-    println!("{}", path);
+    // println!("{}", path);
 
     let mut data = Vec::new();
     fs::File::open(path)
