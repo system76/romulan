@@ -1,5 +1,7 @@
 use alloc::string::String;
 use plain::Plain;
+use serde::{Deserialize, Serialize};
+use zerocopy::{AsBytes, FromBytes, Unaligned};
 
 pub use self::bios::*;
 pub use self::psp::*;
@@ -64,7 +66,7 @@ pub struct ComboDirectoryHeader {
 
 unsafe impl Plain for ComboDirectoryHeader {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(AsBytes, Unaligned, FromBytes, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(packed)]
 pub struct ComboDirectoryEntry {
     /// 0x00: 0 to compare PSP ID, 1 to compare chip ID

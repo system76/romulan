@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-use plain::Plain;
 use serde::{Deserialize, Serialize};
+use zerocopy::{AsBytes, FromBytes, Unaligned};
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[repr(C)]
+#[derive(AsBytes, Unaligned, FromBytes, Clone, Copy, Debug, Serialize, Deserialize)]
+#[repr(packed)]
 pub struct Signature {
     /// 0x00: Magic of EFS (0x55AA55AA)
     pub magic: u32,
@@ -50,5 +50,3 @@ pub struct Signature {
     pub micron: u8,
     pub rsvd_4a: u8,
 }
-
-unsafe impl Plain for Signature {}

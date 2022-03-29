@@ -2,6 +2,7 @@
 
 use alloc::string::String;
 use core::mem;
+use zerocopy::LayoutVerified;
 
 pub mod directory;
 pub mod flash;
@@ -14,13 +15,22 @@ pub struct Rom<'a> {
 impl<'a> Rom<'a> {
     pub fn new(data: &'a [u8]) -> Result<Rom, String> {
         let mut i = 0;
-
+        // TODO: Can we just iterate over chunks? The last one may be too short.
+        /*
+        for block in data.chunks(0x1000) {
+        }
+        */
+        // TODO: Handle errors?
         while i + mem::size_of::<flash::Signature>() <= data.len() {
             if data[i..i + 4] == [0xaa, 0x55, 0xaa, 0x55] {
+                let lv: LayoutVerified<_, flash::Signature> =
+                    LayoutVerified::new_unaligned_from_prefix(&data[i..])
+                        .unwrap()
+                        .0;
                 return Ok(Rom {
                     data: &data[i..],
-                    signature: plain::from_bytes(&data[i..])
-                        .map_err(|err| format!("Flash signature invalid: {:?}", err))?,
+                    signature: lv.into_ref(),
+                    // .map_err(|err| format!("Flash signature invalid: {:?}", err))?,
                 });
             }
 
