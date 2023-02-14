@@ -9,7 +9,7 @@ pub mod flash;
 
 pub struct Rom<'a> {
     data: &'a [u8],
-    signature: &'a flash::Signature,
+    efs: &'a flash::EFS,
 }
 
 impl<'a> Rom<'a> {
@@ -21,30 +21,30 @@ impl<'a> Rom<'a> {
         }
         */
         // TODO: Handle errors?
-        while i + mem::size_of::<flash::Signature>() <= data.len() {
+        while i + mem::size_of::<flash::EFS>() <= data.len() {
             if data[i..i + 4] == [0xaa, 0x55, 0xaa, 0x55] {
-                let lv: LayoutVerified<_, flash::Signature> =
+                let lv: LayoutVerified<_, flash::EFS> =
                     LayoutVerified::new_unaligned_from_prefix(&data[i..])
                         .unwrap()
                         .0;
                 return Ok(Rom {
                     data: &data[i..],
-                    signature: lv.into_ref(),
-                    // .map_err(|err| format!("Flash signature invalid: {:?}", err))?,
+                    efs: lv.into_ref(),
+                    // .map_err(|err| format!("EFS invalid: {:?}", err))?,
                 });
             }
 
             i += 0x1000;
         }
 
-        Err(format!("Flash signature not found"))
+        Err(format!("Embedded Firmware Structure not found"))
     }
 
     pub fn data(&self) -> &'a [u8] {
         self.data
     }
 
-    pub fn signature(&self) -> &'a flash::Signature {
-        self.signature
+    pub fn efs(&self) -> &'a flash::EFS {
+        self.efs
     }
 }

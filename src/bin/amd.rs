@@ -53,7 +53,7 @@ fn print_psp_dir_entry(entry: &PspDirectoryEntry, padding: &str) {
 // this needs to be per flash part size; pass it down here
 const ADDR_MASK: u64 = 0x00FF_FFFF;
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<&PathBuf>) {
     //TODO: optimize
@@ -63,11 +63,11 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
     }
     let offset = (address & ADDR_MASK) as usize;
     let data_size = data.len();
-    if offset + 1 >= data_size {
-        return;
-    }
     if DEBUG {
         println!(" {padding} addr {address:X} offset {offset:X} data size {data_size:X}");
+    }
+    if offset + 1 >= data_size {
+        return;
     }
     match Directory::new(&data[offset..]) {
         Ok(Directory::Bios(directory)) => {
@@ -253,12 +253,10 @@ fn main() {
     };
 
     let data = fs::read(file).unwrap();
-
     let rom = Rom::new(&data).unwrap();
+    let efs = rom.efs();
+    println!("{efs:#X?}");
 
-    let signature = rom.signature();
-    println!("{:#X?}", signature);
-
-    print_directory(&data, signature.psp as u64, 0, export_opt.as_ref());
-    print_directory(&data, signature.bios as u64, 0, export_opt.as_ref());
+    print_directory(&data, efs.psp as u64, 0, export_opt.as_ref());
+    print_directory(&data, efs.bios as u64, 0, export_opt.as_ref());
 }

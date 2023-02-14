@@ -160,7 +160,7 @@ fn amd_analyze(data: &Vec<u8>) -> Result<(), String> {
     let rom = amd::Rom::new(&data);
     match rom {
         Ok(rom) => {
-            println!("{}", serde_json::to_string(rom.signature()).unwrap());
+            println!("{}", serde_json::to_string(rom.efs()).unwrap());
             Ok(())
         }
         Err(err) => Err(format!("No AMD inside - {}", err)),

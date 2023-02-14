@@ -2,9 +2,10 @@
 use serde::{Deserialize, Serialize};
 use zerocopy::{AsBytes, FromBytes, Unaligned};
 
+/// Embedded Firmware Structure
 #[derive(AsBytes, Unaligned, FromBytes, Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(packed)]
-pub struct Signature {
+pub struct EFS {
     /// 0x00: Magic of EFS (0x55AA55AA)
     pub magic: u32,
     pub rsvd_04: u32,
