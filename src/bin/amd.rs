@@ -3,8 +3,8 @@
 use std::{env, fmt::Write, fs, path::PathBuf, process};
 
 use romulan::amd::{
+    directory::{BiosDirectoryEntry, Directory, PspDirectoryEntry},
     Rom,
-    directory::Directory,
 };
 
 fn hexdump(data: &[u8]) -> String {
@@ -21,22 +21,67 @@ fn hexdump(data: &[u8]) -> String {
     s
 }
 
+fn print_bios_dir_entry(entry: &BiosDirectoryEntry, padding: &str) {
+    let BiosDirectoryEntry {
+        kind,
+        region_kind,
+        flags,
+        sub_program,
+        ..
+    } = entry;
+    let size = entry.size;
+    let source = entry.source;
+    let destination = entry.destination;
+    let desc = entry.description();
+    println!("{padding}  * Type {kind:02X} Region {region_kind:02X} Flags {flags:02X} SubProg {sub_program:02X} Size {size:08X} Source {source:016X} Dest {destination:016X}: {desc}");
+}
+
+fn print_psp_dir_entry(entry: &PspDirectoryEntry, padding: &str) {
+    let PspDirectoryEntry {
+        kind,
+        sub_program,
+        rom_id,
+        ..
+    } = entry;
+    let size = entry.size;
+    let value = entry.value;
+    let desc = entry.description();
+    println!("{padding}  * Type {kind:02X} SubProg {sub_program:02X} Rom {rom_id:02X} Size {size:08X} Value {value:016X}: {desc}");
+}
+
+// FIXME: DO NOT HARDCODE THIS!!!
+// this needs to be per flash part size; pass it down here
+const ADDR_MASK: u64 = 0x00FF_FFFF;
+
+const DEBUG: bool = false;
+
 fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<&PathBuf>) {
     //TODO: optimize
     let mut padding = String::with_capacity(indent);
     for i in 0..indent {
         padding.push(' ');
     }
-    let offset = (address & 0x1FFFFFF) as usize;
+    let offset = (address & ADDR_MASK) as usize;
+    let data_size = data.len();
+    if offset + 1 >= data_size {
+        return;
+    }
+    if DEBUG {
+        println!(" {padding} addr {address:X} offset {offset:X} data size {data_size:X}");
+    }
     match Directory::new(&data[offset..]) {
         Ok(Directory::Bios(directory)) => {
-            println!("{}* {:#X}: BIOS Directory", padding, address);
+            println!("{padding}* {address:#X}: BIOS Directory");
             for entry in directory.entries() {
-                println!("{}  * Type {:02X} Region {:02X} Flags {:02X} SubProg {:02X} Size {:08X} Source {:016X} Dest {:016X}: {}", padding, entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.size, entry.source, entry.destination, entry.description());
+                print_bios_dir_entry(entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "BIOS/Level1/Type{:02X}_Region{:02X}_Flags{:02X}_SubProg{:02X}_{}",
-                        entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")
+                        entry.kind,
+                        entry.region_kind,
+                        entry.flags,
+                        entry.sub_program,
+                        entry.description().replace(" ", "_")
                     );
                     let dir = export.join(&name);
                     if dir.exists() {
@@ -50,7 +95,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                                 .expect(&format!("failed to write '{}/raw'", name));
                             fs::write(dir.join("hex"), hexdump(&ok))
                                 .expect(&format!("failed to write '{}/hex'", name));
-                        },
+                        }
                         Err(err) => {
                             fs::write(dir.join("error"), err)
                                 .expect(&format!("failed to write '{}/error'", name));
@@ -61,22 +106,26 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                     print_directory(data, entry.source, indent + 4, export_opt);
                 }
             }
-        },
+        }
         Ok(Directory::BiosCombo(combo)) => {
             println!("{}* {:#X}: BIOS Combo Directory", padding, address);
             for entry in combo.entries() {
                 println!("{}  * {:X?}", padding, entry);
                 print_directory(data, entry.directory, indent + 4, export_opt);
             }
-        },
+        }
         Ok(Directory::BiosLevel2(directory)) => {
             println!("{}* {:#X}: BIOS Level 2 Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * Type {:02X} Region {:02X} Flags {:02X} SubProg {:02X} Size {:08X} Source {:016X} Dest {:016X}: {}", padding, entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.size, entry.source, entry.destination, entry.description());
+                print_bios_dir_entry(entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "BIOS/Level2/Type{:02X}_Region{:02X}_Flags{:02X}_SubProg{:02X}_{}",
-                        entry.kind, entry.region_kind, entry.flags, entry.sub_program, entry.description().replace(" ", "_")
+                        entry.kind,
+                        entry.region_kind,
+                        entry.flags,
+                        entry.sub_program,
+                        entry.description().replace(" ", "_")
                     );
                     let dir = export.join(&name);
                     if dir.exists() {
@@ -90,7 +139,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                                 .expect(&format!("failed to write '{}/raw'", name));
                             fs::write(dir.join("hex"), hexdump(&ok))
                                 .expect(&format!("failed to write '{}/hex'", name));
-                        },
+                        }
                         Err(err) => {
                             fs::write(dir.join("error"), err)
                                 .expect(&format!("failed to write '{}/error'", name));
@@ -98,15 +147,18 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                     };
                 }
             }
-        },
+        }
         Ok(Directory::Psp(directory)) => {
             println!("{}* {:#X}: PSP Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * Type {:02X} SubProg {:02X} Rom {:02X} Size {:08X} Value {:016X}: {}", padding, entry.kind, entry.sub_program, entry.rom_id, entry.size, entry.value, entry.description());
+                print_psp_dir_entry(entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "PSP/Level1/Type{:02X}_SubProg{:02X}_Rom{:02X}_{}",
-                        entry.kind, entry.sub_program, entry.rom_id, entry.description().replace(" ", "_")
+                        entry.kind,
+                        entry.sub_program,
+                        entry.rom_id,
+                        entry.description().replace(" ", "_")
                     );
                     let dir = export.join(&name);
                     if dir.exists() {
@@ -120,7 +172,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                                 .expect(&format!("failed to write '{}/raw'", name));
                             fs::write(dir.join("hex"), hexdump(&ok))
                                 .expect(&format!("failed to write '{}/hex'", name));
-                        },
+                        }
                         Err(err) => {
                             fs::write(dir.join("error"), err)
                                 .expect(&format!("failed to write '{}/error'", name));
@@ -131,22 +183,25 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                     print_directory(data, entry.value, indent + 4, export_opt);
                 }
             }
-        },
+        }
         Ok(Directory::PspCombo(combo)) => {
             println!("{}* {:#X}: PSP Combo Directory", padding, address);
             for entry in combo.entries() {
                 println!("{}  * {:X?}", padding, entry);
                 print_directory(data, entry.directory, indent + 4, export_opt);
             }
-        },
+        }
         Ok(Directory::PspLevel2(directory)) => {
             println!("{}* {:#X}: PSP Level 2 Directory", padding, address);
             for entry in directory.entries() {
-                println!("{}  * Type {:02X} SubProg {:02X} Size {:08X} Value {:016X}: {}", padding, entry.kind, entry.sub_program, entry.size, entry.value, entry.description());
+                print_psp_dir_entry(entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "PSP/Level2/Type{:02X}_SubProg{:02X}_Rom{:02X}_{}",
-                        entry.kind, entry.sub_program, entry.rom_id, entry.description().replace(" ", "_")
+                        entry.kind,
+                        entry.sub_program,
+                        entry.rom_id,
+                        entry.description().replace(" ", "_")
                     );
                     let dir = export.join(&name);
                     if dir.exists() {
@@ -160,7 +215,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                                 .expect(&format!("failed to write '{}/raw'", name));
                             fs::write(dir.join("hex"), hexdump(&ok))
                                 .expect(&format!("failed to write '{}/hex'", name));
-                        },
+                        }
                         Err(err) => {
                             fs::write(dir.join("error"), err)
                                 .expect(&format!("failed to write '{}/error'", name));
@@ -168,9 +223,12 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
                     };
                 }
             }
-        },
+        }
         Err(err) => {
-            println!("{}* {:#X}: failed to load directory: {}", padding, address, err);
+            println!(
+                "{}* {:#X}: failed to load directory: {}",
+                padding, address, err
+            );
         }
     }
 }
