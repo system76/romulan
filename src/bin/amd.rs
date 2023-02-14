@@ -257,6 +257,17 @@ fn main() {
     let efs = rom.efs();
     println!("{efs:#X?}");
 
-    print_directory(&data, efs.psp as u64, 0, export_opt.as_ref());
-    print_directory(&data, efs.bios as u64, 0, export_opt.as_ref());
+    let dirs = [
+        efs.psp_legacy,
+        efs.psp,
+        efs.bios,
+        efs.bios_17_00_0f,
+        efs.bios_17_10_1f,
+        efs.bios_17_30_3f_19_00_0f,
+    ];
+    dirs.iter().for_each(|d| {
+        if *d != 0xffff_ffff {
+            print_directory(&data, *d as u64, 0, export_opt.as_ref())
+        }
+    });
 }

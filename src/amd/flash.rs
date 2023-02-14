@@ -11,7 +11,7 @@ pub struct EFS {
     pub rsvd_04: u32,
     pub rsvd_08: u32,
     pub rsvd_0c: u32,
-    pub rsvd_10: u32,
+    pub psp_legacy: u32,
     /// 0x14: PSP directory for family 17 models 00 and later
     pub psp: u32,
     /// 0x18: BIOS directory for family 17 models 00 to 0f
