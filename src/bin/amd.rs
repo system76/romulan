@@ -50,25 +50,15 @@ fn print_psp_dir_entry(entry: &PspDirectoryEntry, padding: &str) {
 }
 
 // FIXME: DO NOT HARDCODE THIS!!!
-// this needs to be per flash part size; pass it down here
+// this needs to be per flash part size; define enum etc
 const ADDR_MASK: u64 = 0x00FF_FFFF;
 
-const DEBUG: bool = true;
-
 fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<&PathBuf>) {
-    //TODO: optimize
     let mut padding = String::with_capacity(indent);
     for i in 0..indent {
         padding.push(' ');
     }
     let offset = (address & ADDR_MASK) as usize;
-    let data_size = data.len();
-    if DEBUG {
-        println!(" {padding} addr {address:X} offset {offset:X} data size {data_size:X}");
-    }
-    if offset + 1 >= data_size {
-        return;
-    }
     match Directory::new(&data[offset..]) {
         Ok(Directory::Bios(directory)) => {
             println!("{padding}* {address:#X}: BIOS Directory");
@@ -233,6 +223,8 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
     }
 }
 
+const DIR_UNSET: u32 = 0xffff_ffff;
+
 fn main() {
     let file = if let Some(file) = env::args().nth(1) {
         file
@@ -266,7 +258,7 @@ fn main() {
         efs.bios_17_30_3f_19_00_0f,
     ];
     dirs.iter().for_each(|d| {
-        if *d != 0xffff_ffff {
+        if *d != DIR_UNSET {
             print_directory(&data, *d as u64, 0, export_opt.as_ref())
         }
     });
