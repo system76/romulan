@@ -2,14 +2,16 @@
 
 use alloc::string::String;
 use core::mem;
+use serde::{Deserialize, Serialize};
 use zerocopy::LayoutVerified;
 
 pub mod directory;
 pub mod flash;
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Rom<'a> {
     data: &'a [u8],
-    efs: &'a flash::EFS,
+    efs: flash::EFS,
 }
 
 impl<'a> Rom<'a> {
@@ -29,7 +31,7 @@ impl<'a> Rom<'a> {
                         .0;
                 return Ok(Rom {
                     data: &data[i..],
-                    efs: lv.into_ref(),
+                    efs: *lv,
                     // .map_err(|err| format!("EFS invalid: {:?}", err))?,
                 });
             }
@@ -44,7 +46,7 @@ impl<'a> Rom<'a> {
         self.data
     }
 
-    pub fn efs(&self) -> &'a flash::EFS {
+    pub fn efs(&self) -> flash::EFS {
         self.efs
     }
 }
