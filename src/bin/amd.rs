@@ -3,7 +3,7 @@
 use std::{env, fmt::Write, fs, path::PathBuf, process};
 
 use romulan::amd::{
-    directory::{BiosDirectoryEntry, Directory, PspDirectoryEntry},
+    directory::{BiosDirectory, BiosDirectoryEntry, Directory, PspDirectoryEntry},
     Rom,
 };
 
@@ -257,6 +257,14 @@ fn main() {
         efs.bios_17_10_1f,
         efs.bios_17_30_3f_19_00_0f,
     ];
+    let bios_offset = (efs.bios_17_00_0f as u64 & ADDR_MASK) as usize;
+    println!("BIOS@{bios_offset:X}");
+    let d = BiosDirectory::new(&data[bios_offset..]).unwrap();
+    println!("{d:#?}");
+    d.entries().iter().for_each(|e| {
+        let ed = e.description();
+        println!("{ed}: {e:#?}");
+    });
     dirs.iter().for_each(|d| {
         if *d != DIR_UNSET {
             print_directory(&data, *d as u64, 0, export_opt.as_ref())

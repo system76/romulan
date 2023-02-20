@@ -32,7 +32,7 @@ impl<'a> Directory<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[repr(packed)]
 pub struct DirectoryHeader {
     /// 0x00: Magic of directory ("$BHD" or "$PSP")
@@ -46,7 +46,7 @@ pub struct DirectoryHeader {
 
 unsafe impl Plain for DirectoryHeader {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[repr(packed)]
 pub struct ComboDirectoryHeader {
     /// 0x00: Magic of directory ("2BHD" or "2PSP")
