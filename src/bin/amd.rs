@@ -27,11 +27,10 @@ fn print_bios_dir_entry(entry: &BiosDirectoryEntry, padding: &str) {
         region_kind,
         flags,
         sub_program,
-        ..
+        size,
+        source,
+        destination,
     } = entry;
-    let size = entry.size;
-    let source = entry.source;
-    let destination = entry.destination;
     let desc = entry.description();
     println!("{padding}  * Type {kind:02X} Region {region_kind:02X} Flags {flags:02X} SubProg {sub_program:02X} Size {size:08X} Source {source:016X} Dest {destination:016X}: {desc}");
 }
@@ -63,7 +62,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
         Ok(Directory::Bios(directory)) => {
             println!("{padding}* {address:#X}: BIOS Directory");
             for entry in directory.entries() {
-                print_bios_dir_entry(entry, &padding);
+                print_bios_dir_entry(&entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "BIOS/Level1/Type{:02X}_Region{:02X}_Flags{:02X}_SubProg{:02X}_{}",
@@ -107,7 +106,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
         Ok(Directory::BiosLevel2(directory)) => {
             println!("{}* {:#X}: BIOS Level 2 Directory", padding, address);
             for entry in directory.entries() {
-                print_bios_dir_entry(entry, &padding);
+                print_bios_dir_entry(&entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "BIOS/Level2/Type{:02X}_Region{:02X}_Flags{:02X}_SubProg{:02X}_{}",
@@ -141,7 +140,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
         Ok(Directory::Psp(directory)) => {
             println!("{}* {:#X}: PSP Directory", padding, address);
             for entry in directory.entries() {
-                print_psp_dir_entry(entry, &padding);
+                print_psp_dir_entry(&entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "PSP/Level1/Type{:02X}_SubProg{:02X}_Rom{:02X}_{}",
@@ -184,7 +183,7 @@ fn print_directory(data: &[u8], address: u64, indent: usize, export_opt: Option<
         Ok(Directory::PspLevel2(directory)) => {
             println!("{}* {:#X}: PSP Level 2 Directory", padding, address);
             for entry in directory.entries() {
-                print_psp_dir_entry(entry, &padding);
+                print_psp_dir_entry(&entry, &padding);
                 if let Some(export) = export_opt {
                     let name = format!(
                         "PSP/Level2/Type{:02X}_SubProg{:02X}_Rom{:02X}_{}",

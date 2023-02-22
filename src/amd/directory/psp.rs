@@ -1,12 +1,12 @@
-use alloc::boxed::Box;
-use alloc::string::String;
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::mem;
-use plain::Plain;
+use serde::{Deserialize, Serialize};
+use zerocopy::{AsBytes, FromBytes, LayoutVerified as LV};
 
 use super::{ComboDirectoryEntry, ComboDirectoryHeader, DirectoryHeader};
 
-#[derive(Clone, Copy, Debug)]
-#[repr(packed)]
+#[derive(AsBytes, FromBytes, Clone, Copy, Debug, Deserialize, Serialize)]
+#[repr(C)]
 pub struct PspDirectoryEntry {
     /// 0x00: type of entry
     pub kind: u8,
@@ -130,70 +130,75 @@ impl PspDirectoryEntry {
     }
 }
 
-unsafe impl Plain for PspDirectoryEntry {}
-
-pub struct PspDirectory<'a> {
-    header: &'a DirectoryHeader,
-    entries: &'a [PspDirectoryEntry],
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PspDirectory {
+    header: DirectoryHeader,
+    entries: Vec<PspDirectoryEntry>,
 }
 
-impl<'a> PspDirectory<'a> {
+impl<'a> PspDirectory {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         if &data[..4] == b"$PSP" || &data[..4] == b"$PL2" {
-            let header: &DirectoryHeader = plain::from_bytes(&data)
-                .map_err(|err| format!("PSP directory header invalid: {:?}", err))?;
+            let header =
+                DirectoryHeader::read_from_prefix(data).ok_or("PSP directory header invalid")?;
+
+            let hs = mem::size_of::<DirectoryHeader>();
+            let (entries, _) = LV::<_, [PspDirectoryEntry]>::new_slice_from_prefix(
+                &data[hs..],
+                header.entries as usize,
+            )
+            .ok_or("PSP directory entries invalid")?;
 
             return Ok(Self {
-                header: header,
-                entries: plain::slice_from_bytes_len(
-                    &data[mem::size_of::<DirectoryHeader>()..],
-                    header.entries as usize,
-                )
-                .map_err(|err| format!("PSP directory entries invalid: {:?}", err))?,
+                header,
+                entries: entries.to_vec(),
             });
         }
 
         Err(format!("PSP directory header not found"))
     }
 
-    pub fn header(&self) -> &'a DirectoryHeader {
+    pub fn header(&self) -> DirectoryHeader {
         self.header
     }
 
-    pub fn entries(&self) -> &'a [PspDirectoryEntry] {
-        self.entries
+    pub fn entries(&self) -> Vec<PspDirectoryEntry> {
+        self.entries.clone()
     }
 }
 
-pub struct PspComboDirectory<'a> {
-    header: &'a ComboDirectoryHeader,
-    entries: &'a [ComboDirectoryEntry],
+pub struct PspComboDirectory {
+    header: ComboDirectoryHeader,
+    entries: Vec<ComboDirectoryEntry>,
 }
 
-impl<'a> PspComboDirectory<'a> {
+impl<'a> PspComboDirectory {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         if &data[..4] == b"2PSP" {
-            let header: &ComboDirectoryHeader = plain::from_bytes(&data)
-                .map_err(|err| format!("PSP combo header invalid: {:?}", err))?;
+            let header =
+                ComboDirectoryHeader::read_from_prefix(data).ok_or("PSP combo header invalid")?;
+
+            let hs = mem::size_of::<ComboDirectoryHeader>();
+            let (entries, _) = LV::<_, [ComboDirectoryEntry]>::new_slice_from_prefix(
+                &data[hs..],
+                header.entries as usize,
+            )
+            .ok_or("PSP combo entries invalid")?;
 
             return Ok(Self {
-                header: header,
-                entries: plain::slice_from_bytes_len(
-                    &data[mem::size_of::<ComboDirectoryHeader>()..],
-                    header.entries as usize,
-                )
-                .map_err(|err| format!("PSP combo entries invalid: {:?}", err))?,
+                header,
+                entries: entries.to_vec(),
             });
         }
 
         Err(format!("PSP combo header not found"))
     }
 
-    pub fn header(&self) -> &'a ComboDirectoryHeader {
+    pub fn header(&self) -> ComboDirectoryHeader {
         self.header
     }
 
-    pub fn entries(&self) -> &'a [ComboDirectoryEntry] {
-        self.entries
+    pub fn entries(&self) -> Vec<ComboDirectoryEntry> {
+        self.entries.clone()
     }
 }
