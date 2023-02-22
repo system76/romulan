@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-use romulan::intel::{Rom, BiosFile, BiosSection, BiosSections, BiosVolume, BiosVolumes};
+use romulan::amd;
+use romulan::intel;
 use romulan::intel::{section, volume};
-use std::{env, fs, io, mem, process, thread};
+use romulan::intel::{BiosFile, BiosSection, BiosSections, BiosVolume, BiosVolumes};
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
+use std::{env, fs, io, mem, process, thread};
 use uefi::guid::SECTION_LZMA_COMPRESS_GUID;
 
 fn dump_lzma(compressed_data: &[u8], padding: &str) {
@@ -13,7 +15,8 @@ fn dump_lzma(compressed_data: &[u8], padding: &str) {
         .arg("--decompress")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
 
     let data = {
         let mut stdout = child.stdout.take().unwrap();
@@ -46,7 +49,7 @@ fn dump_lzma(compressed_data: &[u8], padding: &str) {
 fn dump_guid_defined(section_data: &[u8], padding: &str) {
     let header = plain::from_bytes::<section::GuidDefined>(section_data).unwrap();
     let data_offset = header.data_offset;
-    let data = &section_data[(data_offset as usize) ..];
+    let data = &section_data[(data_offset as usize)..];
     let guid = header.guid;
     let len = data.len() / 1024;
     println!("{}  {}: {} K", padding, guid, len);
@@ -54,10 +57,10 @@ fn dump_guid_defined(section_data: &[u8], padding: &str) {
     #[allow(clippy::single_match)]
     match guid {
         SECTION_LZMA_COMPRESS_GUID => {
-            let compressed_data = &section_data[mem::size_of::<section::GuidDefined>() ..];
+            let compressed_data = &section_data[mem::size_of::<section::GuidDefined>()..];
             dump_lzma(compressed_data, &format!("{}    ", padding));
-        },
-        _ => ()
+        }
+        _ => (),
     }
 }
 
@@ -68,16 +71,16 @@ fn dump_section(section: &BiosSection, padding: &str) {
     let len = data.len() / 1024;
     println!("{}{:?}:  {} K", padding, kind, len);
 
-    match kind{
+    match kind {
         section::HeaderKind::GuidDefined => {
             dump_guid_defined(data, &format!("{}    ", padding));
-        },
+        }
         section::HeaderKind::VolumeImage => {
             for volume in BiosVolumes::new(data) {
                 dump_volume(&volume, &format!("{}    ", padding));
             }
-        },
-        _ => ()
+        }
+        _ => (),
     }
 }
 
@@ -107,7 +110,7 @@ fn dump_volume(volume: &BiosVolume, padding: &str) {
     let header = volume.header();
     let guid = header.guid;
     let header_len = header.header_length;
-    let len = volume.data().len()/1024;
+    let len = volume.data().len() / 1024;
     let attributes = header.attributes();
     println!("{}{}: {}, {} K", padding, guid, header_len, len);
     println!("{}  Attrib: {:?}", padding, attributes);
@@ -118,47 +121,65 @@ fn dump_volume(volume: &BiosVolume, padding: &str) {
     }
 }
 
-fn romulan(path: &str) -> Result<(), String> {
-    println!("{}", path);
+fn intel_analyze(data: &Vec<u8>) -> Result<(), String> {
+    let rom = intel::Rom::new(&data);
+    match rom {
+        Ok(rom) => {
+            if rom.high_assurance_platform()? {
+                println!("  HAP: set");
+            } else {
+                println!("  HAP: not set");
+            }
 
-    let mut data = Vec::new();
-    fs::File::open(path).map_err(|err| {
-        format!("failed to open {}: {}", path, err)
-    })?.read_to_end(&mut data).map_err(|err| {
-        format!("failed to read {}: {}", path, err)
-    })?;
+            if let Some(bios) = rom.bios()? {
+                println!("  BIOS: {} K", bios.data().len() / 1024);
+                for volume in bios.volumes() {
+                    dump_volume(&volume, "    ");
+                }
+            } else {
+                println!("  BIOS: None");
+            }
 
-    let rom = Rom::new(&data)?;
-
-    if rom.high_assurance_platform()? {
-        println!("  HAP: set");
-    } else {
-        println!("  HAP: not set");
-    }
-
-    if let Some(bios) = rom.bios()? {
-        println!("  BIOS: {} K", bios.data().len()/1024);
-        for volume in bios.volumes() {
-            dump_volume(&volume, "    ");
+            if let Some(me) = rom.me()? {
+                println!("  ME: {} K", me.data().len() / 1024);
+                if let Some(version) = me.version() {
+                    println!("    Version: {}", version);
+                } else {
+                    println!("    Version: Unknown");
+                }
+            } else {
+                println!("  ME: None");
+            }
+            Ok(())
         }
-    } else {
-        println!("  BIOS: None");
+        Err(err) => Err(format!("No Intel inside - {}", err)),
     }
-
-    if let Some(me) = rom.me()? {
-        println!("  ME: {} K", me.data().len()/1024);
-        if let Some(version) = me.version() {
-            println!("    Version: {}", version);
-        } else {
-            println!("    Version: Unknown");
-        }
-    } else {
-        println!("  ME: None");
-    }
-
-    Ok(())
 }
 
+fn amd_analyze(data: &Vec<u8>) -> Result<(), String> {
+    let rom = amd::Rom::new(&data);
+    match rom {
+        Ok(rom) => {
+            println!("{}", serde_json::to_string(rom.efs()).unwrap());
+            Ok(())
+        }
+        Err(err) => Err(format!("No AMD inside - {}", err)),
+    }
+}
+
+fn romulan(path: &str) -> Result<(), String> {
+    // println!("{}", path);
+
+    let mut data = Vec::new();
+    fs::File::open(path)
+        .map_err(|err| format!("failed to open {}: {}", path, err))?
+        .read_to_end(&mut data)
+        .map_err(|err| format!("failed to read {}: {}", path, err))?;
+
+    let _r = intel_analyze(&data);
+    let _r = amd_analyze(&data);
+    Ok(())
+}
 
 fn main() {
     for arg in env::args().skip(1) {

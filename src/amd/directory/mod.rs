@@ -1,5 +1,6 @@
 use alloc::string::String;
-use plain::Plain;
+use serde::{Deserialize, Serialize};
+use zerocopy::{AsBytes, FromBytes};
 
 pub use self::bios::*;
 pub use self::psp::*;
@@ -7,16 +8,16 @@ pub use self::psp::*;
 mod bios;
 mod psp;
 
-pub enum Directory<'a> {
-    Bios(BiosDirectory<'a>),
-    BiosCombo(BiosComboDirectory<'a>),
-    BiosLevel2(BiosDirectory<'a>),
-    Psp(PspDirectory<'a>),
-    PspCombo(PspComboDirectory<'a>),
-    PspLevel2(PspDirectory<'a>),
+pub enum Directory {
+    Bios(BiosDirectory),
+    BiosCombo(BiosComboDirectory),
+    BiosLevel2(BiosDirectory),
+    Psp(PspDirectory),
+    PspCombo(PspComboDirectory),
+    PspLevel2(PspDirectory),
 }
 
-impl<'a> Directory<'a> {
+impl<'a> Directory {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         match &data[..4] {
             b"$BHD" => BiosDirectory::new(data).map(Self::Bios),
@@ -30,8 +31,8 @@ impl<'a> Directory<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-#[repr(packed)]
+#[derive(AsBytes, FromBytes, Clone, Copy, Debug, Deserialize, Serialize)]
+#[repr(C)]
 pub struct DirectoryHeader {
     /// 0x00: Magic of directory ("$BHD" or "$PSP")
     pub magic: u32,
@@ -42,10 +43,8 @@ pub struct DirectoryHeader {
     pub rsvd_0c: u32,
 }
 
-unsafe impl Plain for DirectoryHeader {}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(packed)]
+#[derive(AsBytes, FromBytes, Clone, Copy, Debug, Deserialize, Serialize)]
+#[repr(C)]
 pub struct ComboDirectoryHeader {
     /// 0x00: Magic of directory ("2BHD" or "2PSP")
     pub magic: u32,
@@ -62,10 +61,8 @@ pub struct ComboDirectoryHeader {
     pub rsvd_1c: u32,
 }
 
-unsafe impl Plain for ComboDirectoryHeader {}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(packed)]
+#[derive(AsBytes, FromBytes, Clone, Copy, Debug, Serialize, Deserialize)]
+#[repr(C)]
 pub struct ComboDirectoryEntry {
     /// 0x00: 0 to compare PSP ID, 1 to compare chip ID
     pub id_select: u32,
@@ -74,5 +71,3 @@ pub struct ComboDirectoryEntry {
     /// 0x08: Address of directory
     pub directory: u64,
 }
-
-unsafe impl Plain for ComboDirectoryEntry {}

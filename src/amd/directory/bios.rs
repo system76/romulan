@@ -1,16 +1,12 @@
-use alloc::boxed::Box;
-use alloc::string::String;
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::mem;
-use plain::Plain;
+use serde::{Deserialize, Serialize};
+use zerocopy::{AsBytes, FromBytes, LayoutVerified as LV};
 
-use super::{
-    ComboDirectoryEntry,
-    ComboDirectoryHeader,
-    DirectoryHeader
-};
+use super::{ComboDirectoryEntry, ComboDirectoryHeader, DirectoryHeader};
 
-#[derive(Clone, Copy, Debug)]
-#[repr(packed)]
+#[derive(AsBytes, FromBytes, Clone, Copy, Debug, Deserialize, Serialize)]
+#[repr(C)]
 pub struct BiosDirectoryEntry {
     /// 0x00: type of entry
     pub kind: u8,
@@ -35,7 +31,10 @@ impl BiosDirectoryEntry {
         if end <= data.len() {
             Ok(data[start..end].to_vec().into_boxed_slice())
         } else {
-            Err(format!("BIOS directory entry invalid: {:08X}:{:08X}", start, end))
+            Err(format!(
+                "BIOS directory entry invalid: {:08X}:{:08X}",
+                start, end
+            ))
         }
     }
 
@@ -77,74 +76,74 @@ impl BiosDirectoryEntry {
     }
 }
 
-unsafe impl Plain for BiosDirectoryEntry {}
-
-pub struct BiosDirectory<'a> {
-    header: &'a DirectoryHeader,
-    entries: &'a [BiosDirectoryEntry]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct BiosDirectory {
+    header: DirectoryHeader,
+    entries: Vec<BiosDirectoryEntry>,
 }
 
-impl<'a> BiosDirectory<'a> {
+impl<'a> BiosDirectory {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         if &data[..4] == b"$BHD" || &data[..4] == b"$BL2" {
-            let header: &DirectoryHeader = plain::from_bytes(&data).map_err(|err| {
-                format!("BIOS directory header invalid: {:?}", err)
-            })?;
+            let header =
+                DirectoryHeader::read_from_prefix(data).ok_or("BIOS directory header invalid")?;
+
+            let hs = mem::size_of::<DirectoryHeader>();
+            let (entries, _) = LV::<_, [BiosDirectoryEntry]>::new_slice_from_prefix(
+                &data[hs..],
+                header.entries as usize,
+            )
+            .ok_or("BIOS directory entries invalid")?;
 
             return Ok(Self {
-                header: header,
-                entries: plain::slice_from_bytes_len(
-                    &data[mem::size_of::<DirectoryHeader>()..],
-                    header.entries as usize
-                ).map_err(|err| {
-                    format!("BIOS directory entries invalid: {:?}", err)
-                })?
+                header,
+                entries: entries.to_vec(),
             });
         }
 
         Err(format!("BIOS directory header not found"))
     }
 
-    pub fn header(&self) -> &'a DirectoryHeader {
+    pub fn header(&self) -> DirectoryHeader {
         self.header
     }
 
-    pub fn entries(&self) -> &'a [BiosDirectoryEntry] {
-        self.entries
+    pub fn entries(&self) -> Vec<BiosDirectoryEntry> {
+        self.entries.clone() // so much for zero copy
     }
 }
 
-pub struct BiosComboDirectory<'a> {
-    header: &'a ComboDirectoryHeader,
-    entries: &'a [ComboDirectoryEntry]
+pub struct BiosComboDirectory {
+    header: ComboDirectoryHeader,
+    entries: Vec<ComboDirectoryEntry>,
 }
 
-impl<'a> BiosComboDirectory<'a> {
+impl<'a> BiosComboDirectory {
     pub fn new(data: &'a [u8]) -> Result<Self, String> {
         if &data[..4] == b"2BHD" {
-            let header: &ComboDirectoryHeader = plain::from_bytes(&data).map_err(|err| {
-                format!("BIOS combo header invalid: {:?}", err)
-            })?;
+            let header =
+                ComboDirectoryHeader::read_from_prefix(data).ok_or("BIOS combo header invalid")?;
+            let hs = mem::size_of::<ComboDirectoryHeader>();
+            let (entries, _) = LV::<_, [ComboDirectoryEntry]>::new_slice_from_prefix(
+                &data[hs..],
+                header.entries as usize,
+            )
+            .ok_or("BIOS combo entries invalid")?;
 
             return Ok(Self {
-                header: header,
-                entries: plain::slice_from_bytes_len(
-                    &data[mem::size_of::<ComboDirectoryHeader>()..],
-                    header.entries as usize
-                ).map_err(|err| {
-                    format!("BIOS combo entries invalid: {:?}", err)
-                })?
+                header,
+                entries: entries.to_vec(),
             });
         }
 
         Err(format!("BIOS combo header not found"))
     }
 
-    pub fn header(&self) -> &'a ComboDirectoryHeader {
+    pub fn header(&self) -> ComboDirectoryHeader {
         self.header
     }
 
-    pub fn entries(&self) -> &'a [ComboDirectoryEntry] {
-        self.entries
+    pub fn entries(&self) -> Vec<ComboDirectoryEntry> {
+        self.entries.clone()
     }
 }
